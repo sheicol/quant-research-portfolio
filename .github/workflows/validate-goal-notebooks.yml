@@ -1,0 +1,31 @@
+name: Validate goal-based notebooks
+on:
+  push:
+    branches: [research/modelo-obligaciones]
+    paths:
+      - '.github/workflows/validate-goal-notebooks.yml'
+      - '01_goal_based_portfolio/notebooks/01_liability_model.ipynb'
+      - '01_goal_based_portfolio/notebooks/02_data_collection.ipynb'
+permissions:
+  contents: read
+jobs:
+  run-notebooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute Python cells in notebook order
+        working-directory: 01_goal_based_portfolio/notebooks
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for filename in ("01_liability_model.ipynb", "02_data_collection.ipynb"):
+              print(f"Running {filename}", flush=True)
+              notebook = json.loads(Path(filename).read_text(encoding="utf-8"))
+              namespace = {"__name__": "__main__"}
+              for cell in notebook["cells"]:
+                  if cell["cell_type"] == "code":
+                      source = "".join(cell["source"])
+                      exec(compile(source, f'{filename}:{cell["id"]}', "exec"), namespace)
+          PY
